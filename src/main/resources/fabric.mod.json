@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "blockshuffle",
+  "version": "${version}",
+  "name": "Block Shuffle",
+  "description": "A recreation of Dream's Block Shuffle plugin for modern versions.",
+  "authors": [],
+  "contact": {},
+  "license": "MIT",
+  "icon": "assets/blockshuffle/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.github.hmnly.blockshuffle.BlockShuffle"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric-api": "*",
+    "minecraft": "${minecraft_version}"
+  }
+}
