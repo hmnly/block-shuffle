@@ -6,8 +6,7 @@ import net.minecraft.world.level.block.Blocks;
 import java.util.Set;
 
 public class BlockFilter {
-    public static Set<Block> getValidBlocks()
-    {
+    public static Set<Block> getValidBlocks() {
         return Set.of(
                 Blocks.GRASS_BLOCK,
                 Blocks.DIRT,

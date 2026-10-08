@@ -30,6 +30,10 @@ public class PlayerSession {
         return blockHistory.contains(block);
     }
 
+    public int getBlockHistorySize() {
+        return blockHistory.size();
+    }
+
     public boolean hasFoundBlock() {
         return this.hasFoundBlock;
     }

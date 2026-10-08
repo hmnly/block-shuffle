@@ -16,19 +16,19 @@ import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class Round {
-    private final List<Block> availableBlocks;
+    private final Set<Block> availableBlocks;
     private final Set<Block> usedBlocks;
     private final Set<PlayerSession> initialSessions;
     private final Set<PlayerSession> roundLosers;
-    private boolean isOngoing;
+    private boolean isFinished;
     private int timeLeftTicks;
 
     public Round(Set<Block> availableBlocks, Set<PlayerSession> sessions, int roundTime, MinecraftServer server) {
-        this.availableBlocks = new ArrayList<>(availableBlocks);
+        this.availableBlocks = availableBlocks;
         this.usedBlocks = new HashSet<>();
         this.initialSessions = sessions;
         this.roundLosers = new HashSet<>(sessions);
-        this.isOngoing = true;
+        this.isFinished = false;
         this.timeLeftTicks = roundTime;
 
         assignBlocks(server);
@@ -38,12 +38,18 @@ public class Round {
         for (PlayerSession session : initialSessions) {
             session.resetHasFoundBlock();
 
-            // TODO: declare draw when block pool is exhausted
-            Block block;
-            do {
-                int randomIndex = ThreadLocalRandom.current().nextInt(availableBlocks.size());
-                block = this.availableBlocks.get(randomIndex);
-            } while (session.hasSeenBlock(block) || usedBlocks.contains(block));
+            List<Block> blockCandidates = new ArrayList<>(availableBlocks);
+
+            blockCandidates.removeIf(session::hasSeenBlock);
+            blockCandidates.removeIf(usedBlocks::contains);
+
+            // canStartRound ensures it's not empty but Just In Case™
+            if (blockCandidates.isEmpty()) {
+                throw new IllegalStateException();
+            }
+
+            int randomIndex = ThreadLocalRandom.current().nextInt(blockCandidates.size());
+            Block block = blockCandidates.get(randomIndex);
 
             session.setTargetBlock(block);
             usedBlocks.add(block);
@@ -62,7 +68,7 @@ public class Round {
     }
 
     public void tick(MinecraftServer server) {
-        if (!isOngoing) return;
+        if (isFinished) return;
         if (timeLeftTicks % 10 == 0) {
             for (PlayerSession session : initialSessions) {
                 if (session.hasFoundBlock()) continue;
@@ -93,10 +99,6 @@ public class Round {
         }
 
         if (roundLosers.isEmpty()) {
-            if (initialSessions.size() > 1) {
-                Component message = Component.literal("Everyone found their block! Starting next round...");
-                server.getPlayerList().broadcastSystemMessage(message, false);
-            }
             endRound();
             return;
         }
@@ -105,41 +107,32 @@ public class Round {
         announceTime(timeLeftTicks, server);
 
         if (timeLeftTicks == 0) {
-    //            for (PlayerSession loser : roundLosers) {
-    //                ServerPlayer player = server.getPlayerList().getPlayer(loser.uuid);
-    //                if (player != null) player.setGameMode(GameType.SPECTATOR);
-    //            }
             endRound();
         }
     }
 
     private void endRound() {
-        isOngoing = false;
+        isFinished = true;
     }
 
     private static void announceTime(int ticks, MinecraftServer server) {
         Component message;
         if (ticks > 1200 && ticks % 1200 == 0) {
             message = Component.literal(String.format("%d minutes left!", ticks / 1200));
-        }
-        else if (ticks == 1200) {
-            message = Component.literal("1 minute left!");
-        }
-        else if (ticks == 600) {
-            message = Component.literal("30 seconds left!");
-        }
-        else if (ticks == 200) {
-            message = Component.literal("10 seconds left!");
-        }
-        else if (ticks <= 100 && ticks > 0 && ticks % 20 == 0) {
-            message = Component.literal(String.format("%d", ticks / 20));
-        }
-        else return;
-        server.getPlayerList().broadcastSystemMessage(message, false);
+        } else if (ticks == 1200) {
+            message = Component.literal("1 minute remaining.");
+        } else if (ticks == 600) {
+            message = Component.literal("30 seconds remaining.");
+        } else if (ticks == 200) {
+            message = Component.literal("10 seconds remaining.");
+        } else if (ticks <= 100 && ticks > 0 && ticks % 20 == 0) {
+            message = Component.literal(String.format("%d seconds remaining.", ticks / 20));
+        } else return;
+        server.getPlayerList().broadcastSystemMessage(message, true);
     }
 
-    public boolean isOngoing() {
-        return isOngoing;
+    public boolean isFinished() {
+        return isFinished;
     }
 
     public Set<PlayerSession> getRoundLosers() {

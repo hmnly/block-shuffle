@@ -4,13 +4,12 @@ import com.github.hmnly.blockshuffle.round.PlayerSession;
 import com.github.hmnly.blockshuffle.round.Round;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.block.Block;
 
-import java.util.HashSet;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 public class Game {
     public static final Game INSTANCE = new Game();
@@ -19,7 +18,6 @@ public class Game {
     private Set<PlayerSession> sessions;
     private boolean isActive;
     private Round currentRound;
-    private ServerPlayer gameWinner;
     private int roundTime;
 
     public Game() {
@@ -31,7 +29,6 @@ public class Game {
         sessions = new HashSet<>();
         isActive = true;
         currentRound = null;
-        gameWinner = null;
         this.roundTime = roundTime;
 
         Set<UUID> onlinePlayers = server.getPlayerList().getPlayersByUUID().keySet();
@@ -40,46 +37,70 @@ public class Game {
         }
     }
 
-    public void end(MinecraftServer server) {
-        Component message;
-        // draw
-        if (gameWinner == null) {
-            message = Component.literal("No one could find their block. It is a draw.");
+    private Component buildTieMessage(MinecraftServer server, Set<PlayerSession> survivors) {
+        MutableComponent message = Component.literal("There are no blocks left to find! Game is a tie between ");
+        List<Component> names = new ArrayList<>();
+        for (PlayerSession s : survivors) {
+            ServerPlayer player = server.getPlayerList().getPlayer(s.uuid);
+            names.add((player == null ?
+                    Component.literal("[Disconnected]") :
+                    player.getName().copy()).withStyle(ChatFormatting.BOLD));
         }
-        // win
-        else {
-            Component styledName = gameWinner.getName().copy().withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD);
-            message = Component.empty()
-                    .append(styledName)
-                    .append(Component.literal(" wins!"));
+
+        for (int i = 0; i < names.size(); i++) {
+            if (i > 0) message.append(i == names.size() - 1 ? " and " : ", ");
+            message.append(names.get(i));
         }
+
+        return message.append(".");
+    }
+
+    private void end(MinecraftServer server, Set<PlayerSession> survivors) {
+        Component message = switch (survivors.size()) {
+            case 0 -> Component.literal("No one could find their block! Game is a draw.");
+            case 1 -> {
+                ServerPlayer player = server.getPlayerList().getPlayer(survivors.iterator().next().uuid);
+                yield Component.empty()
+                        .append((player == null ? Component.literal("[Disconnected]") : player.getName().copy())
+                                .withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD))
+                        .append(" wins!");
+            }
+            default -> buildTieMessage(server, survivors);
+        };
+
         server.getPlayerList().broadcastSystemMessage(message, false);
+        isActive = false;
+    }
+
+    private boolean canStartRound() {
+        for (PlayerSession s : sessions) {
+            int unseenBlockCount = availableBlocks.size() - s.getBlockHistorySize();
+            if (unseenBlockCount < sessions.size()) return false;
+        }
+        return true;
     }
 
     public void tick(MinecraftServer server) {
         if (!isActive) return;
-        if (currentRound == null || !currentRound.isOngoing()) {
+        if (currentRound == null || currentRound.isFinished()) {
+            if (!canStartRound()) {
+                end(server, sessions);
+                return;
+            }
             currentRound = new Round(availableBlocks, sessions, roundTime, server);
+            Component message = Component.literal("Everyone found their block! Starting next round...");
+            server.getPlayerList().broadcastSystemMessage(message, false);
         }
 
         currentRound.tick(server);
 
-        if (!currentRound.isOngoing()) {
+        if (currentRound.isFinished()) {
             Set<PlayerSession> roundLosers = currentRound.getRoundLosers();
             sessions.removeAll(roundLosers);
 
-            switch (sessions.size()) {
-                case 1:
-                    UUID winnerUUID = sessions.iterator().next().uuid;
-                    gameWinner = server.getPlayerList().getPlayer(winnerUUID);
-                    isActive = false;
-                    break;
-                case 0:
-                    isActive = false;
-                    break;
+            if (sessions.size() <= 1) {
+                end(server, sessions);
             }
         }
-
-        if (!isActive) end(server);
     }
 }
