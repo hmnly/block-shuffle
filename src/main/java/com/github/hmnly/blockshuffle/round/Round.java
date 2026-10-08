@@ -7,6 +7,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -75,9 +76,9 @@ public class Round {
                     continue;
                 }
 
-                // TODO: fix short block detection
-                BlockPos pos = player.blockPosition().below();
-                BlockState state = player.level().getBlockState(pos);
+                Vec3 pos = player.position();
+                BlockPos blockPos = new BlockPos((int) Math.floor(pos.x), (int) Math.ceil(pos.y), (int) Math.floor(pos.z)).below();
+                BlockState state = player.level().getBlockState(blockPos);
 
                 if (state.is(session.getTargetBlock())) {
                     session.foundBlock();
@@ -87,6 +88,7 @@ public class Round {
                     server.getPlayerList().broadcastSystemMessage(message, false);
                     roundLosers.remove(session);
                 }
+
             }
         }
 
