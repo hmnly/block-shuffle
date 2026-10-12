@@ -10,8 +10,9 @@ Core features remain unchanged, although this mod is designed to handle more tha
 
 ## Known issues
 
-- Match data persists across singleplayer worlds
-  - You can start a game in one world, exit the world, then create another world, and the game will keep going from where you left off
+- ~~Match data persists across singleplayer worlds~~
+  - ~~You can start a game in one world, exit the world, then create another world, and the game will keep going from where you left off~~
+- Match data is lost between server restarts
 - New round announcement is broken
   - The new round is announced after players are assigned their blocks
   - The first round is announced as "Everyone found their block"
@@ -26,7 +27,6 @@ Core features remain unchanged, although this mod is designed to handle more tha
 
 ### Planned
 
-- Managing game state to allow resuming the game as normal after reloading the world
 - Adding support for custom game modes
 - Adding official game modes
 - Community translation project

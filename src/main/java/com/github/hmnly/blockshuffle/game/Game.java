@@ -72,6 +72,12 @@ public class Game {
         isActive = false;
     }
 
+    public void reset() {
+        isActive = false;
+        currentRound = null;
+        sessions = new HashSet<>();
+    }
+
     private boolean canStartRound() {
         for (PlayerSession s : sessions) {
             int unseenBlockCount = availableBlocks.size() - s.getBlockHistorySize();
