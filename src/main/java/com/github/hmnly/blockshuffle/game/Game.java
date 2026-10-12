@@ -12,19 +12,15 @@ import net.minecraft.world.level.block.Block;
 import java.util.*;
 
 public class Game {
-    public static final Game INSTANCE = new Game();
+//    public static final Game INSTANCE = new Game();
 
-    private Set<Block> availableBlocks;
-    private Set<PlayerSession> sessions;
+    private final Set<Block> availableBlocks;
+    private final Set<PlayerSession> sessions;
     private boolean isActive;
     private Round currentRound;
-    private int roundTime;
+    private final int roundTime;
 
-    public Game() {
-        isActive = false;
-    }
-
-    public void start(MinecraftServer server, int roundTime) {
+    public Game(MinecraftServer server, int roundTime) {
         availableBlocks = BlockFilter.getValidBlocks();
         sessions = new HashSet<>();
         isActive = true;
@@ -36,6 +32,8 @@ public class Game {
             sessions.add(new PlayerSession(uuid));
         }
     }
+
+    public boolean isActive() { return isActive; }
 
     private Component buildTieMessage(MinecraftServer server, Set<PlayerSession> survivors) {
         MutableComponent message = Component.literal("There are no blocks left to find! Game is a tie between ");
@@ -70,12 +68,6 @@ public class Game {
 
         server.getPlayerList().broadcastSystemMessage(message, false);
         isActive = false;
-    }
-
-    public void reset() {
-        isActive = false;
-        currentRound = null;
-        sessions = new HashSet<>();
     }
 
     private boolean canStartRound() {
